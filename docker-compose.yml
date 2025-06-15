@@ -9,7 +9,6 @@ volumes:
   html:
   certs:
   acme:
-  minio:
 
 services:
 
@@ -41,7 +40,7 @@ services:
       - "5432"
     volumes:
       - dw-data:/var/lib/postgresql/data/
-      - ./services/strapi/strapi.dump:/tmp/strapi.dump
+      - ./services//.dump:/tmp/.dump
       - ./services/postgres/_initdb.pg/:/docker-entrypoint-initdb.d/
     env_file:
       - .env
@@ -78,40 +77,6 @@ services:
       - mariadb
       - postgres
 
-  strapi:
-    build:
-      context: ./services/strapi
-      dockerfile: Strapi.Dockerfile
-    image: strapi/strapi:latest
-    container_name: strapi
-    restart: unless-stopped
-    networks:
-      - observatory_net
-    expose:
-      - "1337"
-    volumes:
-      - ./services/strapi/config:/opt/app/config
-      - ./services/strapi/src:/opt/app/src
-      - ./services/strapi/package.json:/opt/package.json
-      - ./services/strapi/yarn.lock:/opt/yarn.lock
-      - ./services/strapi/.env:/opt/app/.env
-      - ./services/strapi/public/uploads:/opt/app/public/uploads
-    env_file:
-      - /data/impact-observatory/services/strapi/.env
-      # - .env
-    environment:
-      DATABASE_HOST: postgres
-      # Reverse Proxy / HTTPS
-      VIRTUAL_HOST: ${DOMAIN_NAME}
-      VIRTUAL_PATH: /strapi/
-      VIRTUAL_DEST: /
-      VIRTUAL_PORT: "1337"
-      LETSENCRYPT_HOST: ${DOMAIN_NAME}
-      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
-    depends_on:
-      - postgres
-    command: /bin/sh -c "yarn strapi ts:generate-types && yarn develop"
-
   hop-web:
     image: apache/hop-web:latest
     container_name: hop-web
@@ -130,11 +95,6 @@ services:
       VIRTUAL_PORT: "8080"
       LETSENCRYPT_HOST: ${DOMAIN_NAME}
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
-      AWS_ACCESS_KEY_ID: zcby8I0PeG1uprpYO4KR
-      AWS_SECRET_ACCESS_KEY: xyaCmOf86QWiyGM3L5BfKFv5WQxS70pjKKAbqQIN
-      AWS_REGION: us-east-1
-      AWS_ENDPOINT: http://minio:9000
-      AWS_PATH_STYLE: "true"
     networks:
       - observatory_net
     depends_on:
@@ -187,29 +147,6 @@ services:
     depends_on:
       - postgres
 
-  # ───── STORAGE ─────
-  minio:
-    image: minio/minio:latest
-    container_name: minio
-    restart: always
-    networks:
-      - observatory_net
-    ports:
-      - "9000"
-      - "9001"
-    volumes:
-      - ./services/minio/data:/data
-    env_file:
-      - .env
-      - ./services/minio/.env
-    environment:
-      VIRTUAL_HOST: ${DOMAIN_NAME}
-      VIRTUAL_PATH: /minio/
-      VIRTUAL_DEST: /
-      VIRTUAL_PORT: "9001"
-      MINIO_BROWSER_REDIRECT_URL: https://unitapedia.univ-unita.eu/minio
-    command: server /data --console-address ":9001"
-
   # ───── REVERSE PROXY ─────
   nginx-proxy:
     image: nginxproxy/nginx-proxy
@@ -228,10 +165,8 @@ services:
       - mediawiki
       - phpmyadmin
       - pgadmin
-      # - strapi
       # - hop-server
       - hop-web
-      - minio
 
   acme-companion:
     image: nginxproxy/acme-companion
